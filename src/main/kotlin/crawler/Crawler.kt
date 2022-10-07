@@ -4,10 +4,10 @@ import data.Series
 import data.StreamingService
 import kotlin.collections.HashSet
 
-abstract class Crawler<out T : ShowPage> (val service:StreamingService){
-    protected abstract fun collectPages(): List<T>
+abstract class Crawler<K:ApiClient, out T : ShowPage<K>> (val service:StreamingService, val client:K){
+    protected abstract fun collectPages(client: K): List<T>
     fun crawl(): Set<Series> {
-        val showPages: Set<T> = collectPages().toSet()
+        val showPages: Set<T> = collectPages(client).toSet()
         var seriesSet: HashSet<Series> = HashSet<Series>()
         for (showPage in  showPages){
             var  series = showPage.fetchSeriesPage().convert(service)

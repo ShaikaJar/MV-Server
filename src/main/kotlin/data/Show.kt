@@ -1,13 +1,12 @@
 package data
 
-import java.time.LocalDateTime
+import java.time.LocalDate
 import kotlin.time.Duration
 
 
 data class Show(
     val name: String,
-    val originalAirDate: LocalDateTime,
-    val airDate: LocalDateTime?,
+    val airDate: LocalDate,
     val duration: Duration,
     val description: String,
     val series: Series,
