@@ -4,11 +4,14 @@ import com.google.gson.Gson
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
-import crawler.SeriesPage
 import crawler.ShowPage
 import data.Quality
 import data.Subtitles
 import data.Video
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.runBlocking
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.time.LocalDate
@@ -20,46 +23,52 @@ import kotlin.time.Duration
 class ZdfShowPage(url: String, val zdfClient: ZdfApiClient) : ShowPage<ZdfApiClient>(url, zdfClient) {
     private val document: Document = Jsoup.connect(url).get()
 
-    private val zdfJson: JsonObject = Gson().fromJson(
-        zdfClient.call(
-            url.replace("https://www.zdf.de/", "https://api.zdf.de/content/documents/zdf/")
-                .replace(".html", ".json?profile=player-3"),
-            hashMapOf(Pair("bearer", "video"))
+    private var _zdfJson: Deferred<JsonObject> = GlobalScope.async {
+        Gson().fromJson(
+            zdfClient.call(
+                url.replace("https://www.zdf.de/", "https://api.zdf.de/content/documents/zdf/")
+                    .replace(".html", ".json?profile=player-3"),
+                hashMapOf(Pair("bearer", "video"))
+            ).body(), JsonObject().javaClass
+        )
+    }
 
-        ).body(), JsonObject().javaClass
+    public fun zdfJson() = runBlocking { _zdfJson.await() }
+
+    private var _zdfVideoJson: Deferred<JsonObject> = GlobalScope.async {
+        Gson().fromJson(
+            zdfClient.call(
+                "https://api.zdf.de" +
+                        zdfJson().getAsJsonObject("mainVideoContent")
+                            .getAsJsonObject("http://zdf.de/rels/target")
+                                ["http://zdf.de/rels/streams/ptmd-template"].asString.replace(
+                            "{playerId}",
+                            "ngplayer_2_4"
+                        ),
+                hashMapOf(Pair("bearer", "video"))
+            ).body(),
+            JsonObject().javaClass
+        )
+    }
+
+    public fun zdfVideoJson() = runBlocking { _zdfVideoJson.await() }
+
+    override suspend fun fetchName(): String = zdfJson()["title"].asString
+
+    override suspend fun fetchAirDate(): LocalDate = LocalDate.parse(
+        zdfJson()["editorialDate"].asString,
+        DateTimeFormatter.ISO_OFFSET_DATE_TIME
     )
 
-    private val zdfVideoJson: JsonObject = Gson().fromJson(
-        zdfClient.call(
-            "https://api.zdf.de" +
-                    zdfJson.getAsJsonObject("mainVideoContent")
-                        .getAsJsonObject("http://zdf.de/rels/target")
-                            ["http://zdf.de/rels/streams/ptmd-template"].asString.replace(
-                        "{playerId}",
-                        "ngplayer_2_4"
-                    ),
-            hashMapOf(Pair("bearer", "video"))
-        ).body(),
-        JsonObject().javaClass
-    )
 
-    override fun fetchName(): String = zdfJson["name"].asString
+    override suspend fun fetchDescription(): String = zdfJson()["leadParagraph"].asString
 
-    override fun fetchAirDate(): LocalDate = LocalDate.parse(
-        zdfJson["editorialDate"].asString,
-        DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
-    )
-
-
-    override fun fetchDescription(): String = zdfJson["leadParagraph"].asString
-
-    override fun fetchSeriesPage(): SeriesPage<ZdfApiClient> =
-        ZdfSeriesPage(document.select("a.m-clickarea-action js-track-click")[0].attr("href"), zdfClient)
-
-    override fun fetchVideos(): Set<Video> {
+    override suspend fun fetchSeriesName() = zdfJson()["http://zdf.de/rels/brand"].asJsonObject["title"].asString
+    override suspend fun fetchTags() = setOf(zdfJson()["http://zdf.de/rels/category"].asJsonObject["title"].asString)
+    override suspend fun fetchVideos(): Set<Video> {
         val videos: LinkedList<Video> = LinkedList<Video>()
 
-        val priorityList = zdfVideoJson.getAsJsonArray("priorityList").map(JsonElement::getAsJsonObject)
+        val priorityList = zdfVideoJson().getAsJsonArray("priorityList").map(JsonElement::getAsJsonObject)
         for (prio in priorityList) {
             val formitaetenList = prio.getAsJsonArray("formitaeten").map(JsonElement::getAsJsonObject)
             for (formitaet in formitaetenList) {
@@ -103,11 +112,10 @@ class ZdfShowPage(url: String, val zdfClient: ZdfApiClient) : ShowPage<ZdfApiCli
         }
     }
 
-    override fun fetchSubtitle(): Set<Subtitles> {
-        TODO("Not yet implemented")
+    override suspend fun fetchSubtitle(): Set<Subtitles> {
+        //TODO("Not yet implemented")
+        return emptySet()
     }
 
-    override fun fetchDuration(): Duration {
-        TODO("Not yet implemented")
-    }
+    override suspend fun fetchDuration(): Duration = Duration.ZERO
 }

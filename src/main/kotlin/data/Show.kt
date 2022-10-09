@@ -9,7 +9,8 @@ data class Show(
     val airDate: LocalDate,
     val duration: Duration,
     val description: String,
-    val series: Series,
     val videos: Set<Video>,
-    val subtitles: Set<Subtitles>
+    val subtitles: Set<Subtitles>,
+    val seriesName: String,
+    val tags: Set<String>
 )

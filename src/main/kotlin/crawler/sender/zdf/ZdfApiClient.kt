@@ -1,6 +1,9 @@
 package crawler.sender.zdf
 
 import crawler.ApiClient
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.runBlocking
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import java.net.URI
@@ -13,15 +16,18 @@ class ZdfApiClient : ApiClient {
     var videoBearer: String? = null;
 
     init {
-        this.init()
-    }
-
-    override fun init() {
-        val index = Jsoup.connect("https://www.zdf.de").get()
-        searchBearer = parseBearerFromDoc(document = index, elementQuery = "head > script", "'")
-        videoBearer = parseBearerFromDoc(document = index, elementQuery = "article > script", "\"")
-        if (videoBearer.isNullOrEmpty())
-            videoBearer = parseBearerFromDoc(document = index, elementQuery = "main > script", "\"")
+        runBlocking {
+            val index = Jsoup.connect("https://www.zdf.de").get()
+            val videoBearerTask = async {
+                var videoToken = parseBearerFromDoc(document = index, elementQuery = "article > script", "\"")
+                if (videoToken.isNullOrEmpty())
+                    videoToken = parseBearerFromDoc(document = index, elementQuery = "main > script", "\"")
+                videoBearer = videoToken
+            }
+            val searchBearerTask =
+                async { searchBearer = parseBearerFromDoc(document = index, elementQuery = "head > script", "'") }
+            awaitAll(searchBearerTask, videoBearerTask)
+        }
 
         if (searchBearer.isNullOrEmpty() || videoBearer.isNullOrEmpty()) {
             println("SearchBearer: $searchBearer")
@@ -30,10 +36,10 @@ class ZdfApiClient : ApiClient {
         }
     }
 
-    fun parseBearerFromDoc(document: Document, elementQuery: String, bearerQuery: String): String? =
+    suspend fun parseBearerFromDoc(document: Document, elementQuery: String, bearerQuery: String): String? =
         document.select(elementQuery).firstNotNullOfOrNull { element -> parseBearer(element.html(), bearerQuery) }
 
-    fun parseBearer(element: String, bearerQuery: String): String? {
+    suspend fun parseBearer(element: String, bearerQuery: String): String? {
         val JSON_API_TOKEN = "apiToken"
         val indexToken = element.indexOf(JSON_API_TOKEN)
 
@@ -47,7 +53,7 @@ class ZdfApiClient : ApiClient {
 
     }
 
-    override fun call(url:String, options: HashMap<String,String>): HttpResponse<String> {
+    override suspend fun call(url: String, options: HashMap<String, String>): HttpResponse<String> {
         val bearer = when {
             !options.containsKey("bearer") -> ""
             options["bearer"] == "search" -> searchBearer
@@ -57,7 +63,7 @@ class ZdfApiClient : ApiClient {
         val requestBuilder: HttpRequest.Builder? =
             HttpRequest.newBuilder(URI.create(url)).setHeader("Api-Auth", "Bearer $bearer")
 
-        val response =  HttpClient.newHttpClient().send(requestBuilder?.build(), HttpResponse.BodyHandlers.ofString())
+        val response = HttpClient.newHttpClient().send(requestBuilder?.build(), HttpResponse.BodyHandlers.ofString())
 
         //println(response.uri())
         //println(response.statusCode())
