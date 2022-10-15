@@ -3,6 +3,7 @@ import crawler.sender.zdf.ZdfApiClient
 import crawler.sender.zdf.ZdfCrawler
 import crawler.sender.zdf.ZdfShowPage
 import kotlinx.coroutines.async
+import kotlinx.coroutines.channels.toList
 import kotlinx.coroutines.runBlocking
 
 fun main(args: Array<String>) {
@@ -21,8 +22,9 @@ fun main(args: Array<String>) {
     val crawler = ZdfCrawler()
 
     runBlocking {
-        val shows = crawler.crawl()
-        for (show in shows)  println(show.name)
+        val shows = crawler.crawl().toList()
+        //for (show in shows)  println(show.name)
+        crawler.close()
     }
 
 }
