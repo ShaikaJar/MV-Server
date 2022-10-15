@@ -1,27 +1,28 @@
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
-import com.google.gson.JsonObject
-import com.google.gson.internal.LinkedTreeMap
+import crawler.Crawler
 import crawler.sender.zdf.ZdfApiClient
 import crawler.sender.zdf.ZdfCrawler
 import crawler.sender.zdf.ZdfShowPage
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
-import java.util.Objects
 
 fun main(args: Array<String>) {
-    val client = ZdfApiClient()
 
+    val searchUrl =
+        "https://api.zdf.de/search/documents?hasVideo=true&q=*&types=page-video&sortOrder=desc&sortBy=date&page=1"
+    runBlocking {
+        val result = ZdfApiClient().call(
+            searchUrl,
+            hashMapOf(Pair("bearer", "search"))
+        )
+        println(result.statusCode())
+        println(result.headers().map())
+    }
 
-    val testPage: ZdfShowPage = ZdfShowPage(
-        "https://www.zdf.de/dokumentation/zdfinfo-doku/die-geheimnisse-von-sakkara-der-sensationsfund-100.html",
-        client
-    )
-    //runBlocking { println(testPage.zdfJson()) }
+    val crawler = ZdfCrawler()
 
-    println(testPage.zdfJson())
-
-    //println(runBlocking {ZdfCrawler().crawl()})
-
-    return
+    runBlocking {
+        val shows = crawler.crawl()
+        for (show in shows)  println(show.name)
+    }
 
 }
