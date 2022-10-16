@@ -23,8 +23,8 @@ fun main(args: Array<String>) {
 
     runBlocking {
         val shows = crawler.crawl().toList()
-        //for (show in shows)  println(show.name)
         crawler.close()
+        for (show in shows)  println(show.name)
     }
 
 }

@@ -14,6 +14,7 @@ import kotlin.time.Duration
 abstract class ShowPage<K : ApiClient>(val url: String, client: K) {
     abstract suspend fun fetchName(): String
     abstract suspend fun fetchAirDate(): LocalDate
+    abstract suspend fun fetchOriginalAirDate(): LocalDate?
     abstract suspend fun fetchDuration(): Duration
     abstract suspend fun fetchDescription(): String
     abstract suspend fun fetchSeriesName(): String
@@ -24,18 +25,20 @@ abstract class ShowPage<K : ApiClient>(val url: String, client: K) {
     suspend fun convert(): Show? = runBlocking {
 
         val name = async { fetchName() }
-        val airDate = async{ fetchAirDate() }
-        val duration = async{ fetchDuration() }
-        val description = async{ fetchDescription() }
-        val videos = async{ fetchVideos() }
+        val airDate = async { fetchAirDate() }
+        val originalAirDate = async { fetchOriginalAirDate() }
+        val duration = async { fetchDuration() }
+        val description = async { fetchDescription() }
+        val videos = async { fetchVideos() }
         val subtitles = async { fetchSubtitle() }
-        val seriesName = async{ fetchSeriesName() }
-        val tags = async{ fetchTags() }
+        val seriesName = async { fetchSeriesName() }
+        val tags = async { fetchTags() }
 
         //println("Converting Page ${name.await()}")
         return@runBlocking Show(
             name = name.await(),
             airDate = airDate.await(),
+            originalAirDate = originalAirDate.await(),
             duration = duration.await(),
             description = description.await(),
             videos = videos.await(),

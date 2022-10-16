@@ -7,6 +7,7 @@ import kotlin.time.Duration
 data class Show(
     val name: String,
     val airDate: LocalDate,
+    val originalAirDate: LocalDate?,
     val duration: Duration,
     val description: String,
     val videos: Set<Video>,

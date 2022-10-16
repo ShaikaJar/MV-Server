@@ -44,7 +44,7 @@ abstract class Crawler<K : ApiClient, T : ShowPage<K>>(val service: StreamingSer
                 complete++
                 //println("crawl(): Completed $complete/$count")
                 if (count <= complete) {
-                    println("All Pages converted")
+                    //println("All Pages converted")
                     channel.close()
                 }
             }
@@ -53,7 +53,7 @@ abstract class Crawler<K : ApiClient, T : ShowPage<K>>(val service: StreamingSer
         complete++
         //println("crawl(): Completed $complete/$count")
         if (count <= complete) {
-            println("All Pages converted")
+            //println("All Pages converted")
             channel.close()
         }
     }
